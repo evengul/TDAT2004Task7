@@ -17,12 +17,13 @@ httpServer.listen(3000, () => {
     console.log('HTTP server listening on port 3000');
 });
 
+let clients = [];
+
 // Incomplete WebSocket server
 const wsServer = net.createServer(connection => {
     console.log('Client connected');
 
     connection.on('data', data => {
-        console.log(data.toString());
         if (!(data.toString().includes("HTTP/1.1"))){
             let bytes = data;
             let length = bytes[1] & 127;
@@ -37,9 +38,21 @@ const wsServer = net.createServer(connection => {
             }
             connection.write(frameData(parsedData));
 
-            setInterval(() => connection.write(frameData("Interval function!")), 3000);
+            for (let i = 0; i < clients.length; i++){
+                if (!clients[i].destroyed){
+                    clients[i].write(frameData(parsedData));
+                }
+            }
+
+            //setInterval(() => connection.write(frameData("Interval function!")), 3000);
         }
         else{
+
+            if (clients.indexOf(connection) === -1){
+                console.log("pushing");
+                clients.push(connection);
+            }
+
             let clientKey = data.toString()
                 .split("\n")
                 .filter((line) => line.includes("Sec-WebSocket-Key"))[0].split(": ")[1].slice(0, -1);
@@ -59,12 +72,15 @@ const wsServer = net.createServer(connection => {
 
     connection.on('end', () => {
         console.log('Client disconnected');
+        clients = clients.filter(e => e !== connection);
         connection.end();
+        connection.destroy();
     });
 });
 wsServer.on('error', error => {
     console.error('Error: ', error);
 });
+
 wsServer.listen(3001, () => {
     console.log('WebSocket server listening on port 3001');
 });
@@ -83,7 +99,5 @@ function frameData(str){
     for (let i = 0; i < data.length; i++){
         frame.push(data[i]);
     }
-    console.log(data);
-    console.log(Buffer.from(frame));
     return Buffer.from(frame);
 }
