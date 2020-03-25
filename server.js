@@ -39,12 +39,15 @@ const wsServer = net.createServer(connection => {
             connection.write(frameData(parsedData));
 
             for (let i = 0; i < clients.length; i++){
-                if (!clients[i].destroyed){
+                if (!clients[i].destroyed && clients[i] !== connection){
+                    console.log("writing");
+                    console.log(parsedData);
                     clients[i].write(frameData(parsedData));
                 }
+                else if (clients[i] === connection){
+                    clients[i].write(frameData("Data sent to all other clients!"));
+                }
             }
-
-            //setInterval(() => connection.write(frameData("Interval function!")), 3000);
         }
         else{
 
