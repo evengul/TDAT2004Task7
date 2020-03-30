@@ -27,7 +27,7 @@ const wsServer = net.createServer(connection => {
 
     connection.on('data', data => {
         //If this is a standard data package
-        if (!(data.toString().includes("HTTP/1.1"))){
+        if (!(data.toString().includes("HTTP"))){
             //Parse the data
             let bytes = data;
             let length = bytes[1] & 127;
@@ -43,15 +43,18 @@ const wsServer = net.createServer(connection => {
 
             //For every client
             for (let i = 0; i < clients.length; i++){
-                //If the client still exists, and is not this same client we are sending from
-                if (!clients[i].destroyed && clients[i] !== connection){
-                    //Write the data to all other clients than "yourself"
-                    clients[i].write(frameData(parsedData));
-                }
-                //If this is our client
-                else if (clients[i] === connection){
-                    //Give a message that we have sent data to other clients
-                    clients[i].write(frameData("Data sent to all other clients!"));
+                //If the data is not a FIN package
+                if (Buffer.from(data)[0] !== 136){
+                    //If the client still exists, and is not this same client we are sending from
+                    if (!clients[i].destroyed && clients[i] !== connection){
+                        //Write the data to all other clients than "yourself"
+                        clients[i].write(frameData(parsedData));
+                    }
+                    //If this is our client
+                    else if (clients[i] === connection){
+                        //Give a message that we have sent data to other clients
+                        clients[i].write(frameData("Data sent to all other clients!"));
+                    }
                 }
             }
         }
